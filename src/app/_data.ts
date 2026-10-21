@@ -84,7 +84,7 @@ export type BreadItem = {
   /** 価格の横に並べる。表示は「小麦・乳・卵」。 */
   allergens: readonly string[];
   lead: string;
-  /** 写真の下に残る面（samples.css の .bd-photo-*）。 */
+  /** 写真の下に残る面（site.css の .bd-photo-*）。 */
   tone: string;
   /** パンの写真（public/samples/ からの拡張子なしの道）。 */
   photo: string;

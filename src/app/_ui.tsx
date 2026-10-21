@@ -25,7 +25,7 @@ import {
  * ■ ボタンの色は --brick を直接読む
  *   共有の BTN_PRIMARY は主色を --green で読むが、この店は
  *   **表側の主色（レンガ）と管理画面の袖（焦茶）が別の色**で、管理画面では
- *   --green を焦茶に付け替えている（samples.css）。ボタンだけは表裏どちらでも
+ *   --green を焦茶に付け替えている（site.css）。ボタンだけは表裏どちらでも
  *   レンガにしたいので、付け替えの影響を受けない --brick を使う。
  *
  * ■ ここにも overflow / transform / filter を付けない（sticky が死ぬ）。

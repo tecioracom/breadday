@@ -11,7 +11,7 @@ import { HOLD_COUNT, PICKUP_DAY, STAFF_ON_DUTY } from './_data';
  * ■ 袖の色だけ表側と変える
  *   表側の主色はレンガだが、管理画面の袖は焦茶（書き出しもそうなっている）。
  *   共有部品は主色を `--green` で読むので、`.bd-admin` を重ねて
- *   **`--green` だけを焦茶に付け替える**（samples.css）。
+ *   **`--green` だけを焦茶に付け替える**（site.css）。
  *   レンガが要るボタンは `--brick` を直接読むので影響を受けない。
  *
  * ■ 朝の厨房で開く画面
