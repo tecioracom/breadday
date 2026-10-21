@@ -1,0 +1,300 @@
+/* ============================================================================
+ * サンプルサイト（/[locale]/samples 配下）専用のスコープ。
+ * `src/app/[locale]/samples/layout.tsx` からのみ import する。
+ *
+ * ■ 2階建てにする
+ *   `.sample-shell`  … ハブ・画面設計ページ・8本の実装、全部に掛かる外側。
+ *                      変数の器と color-scheme だけを持つ。
+ *   `.sample-<slug>` … 1本ぶんの配色・書体。**Teciora のトークンを参照しない。**
+ *                      8本が「同じ人が作った1サイト」に見えないための線。
+ *
+ * ■ ここで絶対に宣言しないもの
+ *   overflow / transform / filter / backdrop-filter / contain / will-change。
+ *   1つでも入ると、子孫の position: sticky が**無言で**効かなくなる
+ *   （管理画面のサイドバーと予約の集計パネルが sticky）。検査 [10] が見ている。
+ *
+ * ■ 新しい1本を足すときにやること（他の7本の担当へ）
+ *   1. この下に `.sample-<slug>` を1ブロック足す。
+ *      必ず `--focus-ring` を自分の色で上書きすること。上書きを忘れると
+ *      Teciora のシアン（#00D1FF）が漏れて、配色を分けた意味が消える。
+ *   2. 見出しの `font-family: inherit` を書く。globals.css の
+ *      `h1,h2,h3,h4 { @apply font-display }` を打ち消すため。
+ *      samples.css は @layer に入っていないので、レイヤ付きの base より強い。
+ *   3. 和文の大きな見出しは **マイナス字間**（h1 -0.02em / h2 -0.01em）。
+ *      欧文のオーバーラインは正のまま（別物なので触らない）。
+ *   4. 幅の指定に `ch` を使わない。「0」の字幅なので和文では効かない
+ *      （同じ 62ch が書体によって 39 字にも 31 字にもなる）。`em` を使う。
+ * ==========================================================================*/
+
+.sample-shell {
+  /*
+   * 端末のダークモードで、UA が描く部品だけが黒くなる事故を止める。
+   * 8本とも明るい配色しか持たず `dark:` は1つも書いていない。
+   * 宣言が無いと <select>・チェックボックス・スクロールバーなど
+   * **UA が描くものだけ**が OS の設定に従って暗転し、配色が混ざる。
+   * ダークモードを作る宣言ではなく、作っていないことを宣言するための1行。
+   */
+  color-scheme: light;
+
+  /* 各サイトのヘッダー高。ページ内アンカーの scroll-margin-top が参照する。 */
+  --site-header-h: 56px;
+  --site-anchor-offset: calc(var(--site-header-h) + 16px);
+}
+
+@media (min-width: 768px) {
+  .sample-shell {
+    --site-header-h: 64px;
+  }
+}
+
+
+.sample-shell [id] {
+  scroll-margin-top: var(--site-anchor-offset);
+}
+
+/* ------------------------------------------------------------------
+ * ⚠ 濃い面の上の文字色について（8本共通の落とし穴）
+ * ------------------------------------------------------------------
+ * **`text-[var(--cream)]/80` は効かない。**
+ * Tailwind は不透明度つきの任意値を `rgb(var(--cream) / 0.8)` に展開する。
+ * 変数の中身が `#F3F0E8` のような色表記だと、この宣言は**無効**になって
+ * 丸ごと捨てられ、文字色は**継承した色**になる。
+ * `.sample-<slug> { color: var(--ink) }` を継承するので、
+ * **濃い面の上に濃い文字**が出る（ヒーローの和文が消える、で実際に踏んだ）。
+ * しかも親がたまたま明るい色を指定している場所では正しく見えるので、
+ * 画面によって出たり出なかったりする。
+ *
+ * 濃い面に載せる文字は、**不透明度を焼き込んだ変数**を使うこと。
+ * 各サイトが `--on-dark-*` を自分の地色で定義する（下の .sample-nagi 参照）。
+ * Teciora 自身の面（SiteFooter・アウトロ帯）は本体のトークンなので
+ * `text-white/80` のままでよい（`white` は実在のパレット色）。
+ * 検査 [S4] が `色-[var(--…)]/数字` の並びを禁止している。
+ * ------------------------------------------------------------------ */
+
+/* ------------------------------------------------------------------
+ * 入力欄のフォーカスリング（8本共通）
+ * ------------------------------------------------------------------
+ * @tailwindcss/forms は input / select / textarea の :focus に
+ * `outline: 2px solid transparent` を当てる（リングは box-shadow で描く前提）。
+ * サンプル側はその既定リング（Tailwind の青）を消しているので、
+ * globals.css の `:where(...)` 規則（詳細度 0）は forms の規則に勝てず、
+ * **入力欄だけフォーカスリングが存在しない**状態になる。
+ * 枠線の色替えだけでは、フォーカス位置が 1px の色差でしか分からない。
+ * samples 配下に限って、各サイトの --focus-ring で描き直す。
+ * ------------------------------------------------------------------ */
+.sample-body :is(input, select, textarea, button, a, [tabindex]):focus-visible {
+  outline: 2px solid var(--focus-ring, #173c3b);
+  outline-offset: 2px;
+}
+
+/* 濃い面（管理画面のサイドバーなど）の上では、リングを明るい側に振る。 */
+.sample-body .site-on-dark :is(a, button, [tabindex]):focus-visible {
+  outline: 2px solid var(--focus-ring-dark, #ffffff);
+  outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------------
+ * 孤立行（行末に1〜2文字だけ残る行）について
+ * ------------------------------------------------------------------
+ * `text-wrap: pretty` を当てて実測したが、和文では行の割れ方が1文字も
+ * 変わらなかった。効かない指定を「対策した」体で残さない。孤立行は
+ * 行長（max-w の和字数）と文の長さの組み合わせで決まるので、直すときは
+ * そのどちらかを動かすこと。
+ * ------------------------------------------------------------------ */
+
+/* ------------------------------------------------------------------
+ * 横スクロールする器（表・カレンダー）の共通クラス。
+ * overflow は **この要素自身** に付く。祖先には絶対に付けない。
+ * ------------------------------------------------------------------ */
+.sample-body .site-scroll-x {
+  overflow-x: auto;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ------------------------------------------------------------------
+ * 動きを減らす設定のときは、ループ動画を出さない（`SiteVideo`）。
+ * Figma の `NAGI / Motion & interaction guide` の指定
+ * （「動きを減らす設定ではズームと移動を無効化」）。
+ *
+ * 歯止めは2つある。1つめは `<source media="(prefers-reduced-motion:
+ * no-preference)">` で、**資源選択の段階で候補が0本になる**ので
+ * 1バイトも取りに行かない。ここはその2つめで、`media` 属性を無視する
+ * 実装が仮にあっても動くものを出さないための保険である。
+ *
+ * **動画を消してもヒーローは空にならない。**ポスターは器の
+ * `background-image` にも置いてあり（`SiteVideo` のインラインスタイル）、
+ * 同じ URL なので取得は1回で済む。
+ * ------------------------------------------------------------------ */
+@media (prefers-reduced-motion: reduce) {
+  .sample-body .site-video-motion {
+    display: none;
+  }
+}
+
+
+
+/* ============================================================================
+ * BREADDAY — 朝8時に焼き上がるベーカリーとコーヒーの店
+ *
+ * 淡いバター色の地に、レンガ色（面とボタン）と焦茶（文字と管理画面の袖）。
+ * 欧文は太いグロテスク（Archivo）、和文は端末のゴシック。
+ * 色は書き出した画面から実測して拾った:
+ *   地 #FFF5DD / 濃い地 #F7E5B9 / レンガ #A83C23 / 焦茶 #542A18 / 紙 #FFFFFF
+ * （#FFF5DD 上で 焦茶 11.0:1 / レンガ 5.80:1、レンガ上で #FFF5DD 5.80:1）
+ *
+ * ■ --green を2度定義している理由
+ *   共有部品（BTN_PRIMARY・AdminShell の袖）は「主色」を --green で読む。
+ *   この店では、表側の主色は**レンガ**、管理画面の袖は**焦茶**で、
+ *   書き出した画面でもそこだけ色が違う。そこで
+ *     .sample-breadday          … --green = レンガ（表側）
+ *     .sample-breadday.bd-admin … --green = 焦茶（管理画面の袖）
+ *   と付け替え、レンガが要る場所（管理画面のボタン）は --brick を直接読む。
+ *   --brick は付け替えの影響を受けない。
+ * ==========================================================================*/
+.sample-breadday {
+  --brick: #a83c23; /* #FFF5DD の上で 5.80:1 / 白文字 6.30:1 */
+  --brick-deep: #8f3119; /* ホバー。#FFF5DD 文字で 7.38:1 */
+  --green: #a83c23; /* 共有部品が読む「主色」＝レンガ */
+  --green-deep: #8f3119;
+  --cream: #fff5dd; /* 地。濃い面の上の文字にも使う */
+  --paper: #ffffff;
+  --ink: #542a18; /* 対 --cream 11.0:1 / 対 --soft 9.59:1 */
+  --sub: #74604b; /* 対 --cream 5.50:1 / 対 --soft 4.79:1 */
+  --line: #e8d6b2;
+  --line-strong: #a98443; /* 対 白 3.46:1（入力欄の枠は 3:1 以上が要る） */
+  --soft: #f7e5b9; /* 帯・集計パネルの地 */
+  --soft-ink: #542a18;
+  --alert: #992114; /* 対 --cream 7.47:1 / 白文字 8.13:1 */
+  --focus-ring: #542a18;
+  --focus-ring-dark: #fff5dd;
+
+  /* 入力欄・ボタンの角。書き出しは丸みのある角で統一されている。 */
+  --field-radius: 10px;
+
+  /*
+   * 濃い面（レンガ・焦茶）の上に載せる文字と罫。**不透明度を焼き込んである。**
+   * `text-[var(--cream)]/80` は Tailwind が rgb(var(--cream) / 0.8) に展開し、
+   * 中身が #FFF5DD だと宣言ごと捨てられて、**継承した焦茶**が出る。検査 [S4]。
+   * 実測（レンガ #A83C23 の上／焦茶 #542A18 の上）:
+   *   strong 0.92 → 5.16:1 / 9.57:1
+   *   soft   0.80 → 4.30:1 / 7.9:1  ← レンガの上では本文に使わない
+   *   faint  0.70 → 3.67:1 / 6.21:1 ← 同上（袖＝焦茶でだけ使う）
+   * レンガ面の本文は --cream か --on-dark-strong を使うこと。
+   */
+  --on-dark-strong: rgba(255, 245, 221, 0.92);
+  --on-dark-soft: rgba(255, 245, 221, 0.8);
+  --on-dark-faint: rgba(255, 245, 221, 0.7);
+  --on-dark-line: rgba(255, 245, 221, 0.28);
+  --on-dark-line-strong: rgba(255, 245, 221, 0.55);
+  --on-dark-fill: rgba(255, 245, 221, 0.1);
+
+  font-family: var(--font-noto-sans-jp), 'Hiragino Sans', 'Noto Sans JP',
+    'Yu Gothic', sans-serif;
+  color: var(--ink);
+}
+
+/* 管理画面の袖だけ焦茶にする。ボタンのレンガは --brick なので影響を受けない。 */
+.sample-breadday.bd-admin {
+  --green: #542a18;
+  --green-deep: #3d1d0f;
+}
+
+/* globals.css の `h1,h2,h3,h4 { @apply font-display }` を打ち消す。 */
+.sample-breadday h1,
+.sample-breadday h2,
+.sample-breadday h3,
+.sample-breadday h4,
+.sample-breadday h5 {
+  font-family: inherit;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+/* 和文の大見出しはマイナス字間。欧文のオーバーラインは正のまま（別物）。 */
+.sample-breadday h1 {
+  letter-spacing: -0.02em;
+}
+.sample-breadday h2 {
+  letter-spacing: -0.01em;
+}
+
+/*
+ * 「GOOD BREAD. GOOD DAY.」とワードマーク。
+ * Archivo は和文を持たないので、**欧文だけの文字列**に付けること
+ * （和欧混植に当てると和文だけ端末のゴシックに落ちて書体が割れる）。
+ */
+.sample-breadday .bd-display {
+  font-family: var(--font-breadday-sans), 'Archivo', 'Helvetica Neue', Arial,
+    sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+.sample-breadday .bd-wordmark {
+  font-family: var(--font-breadday-sans), 'Archivo', 'Helvetica Neue', Arial,
+    sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+/* 欧文の小さいラベル（BAKERY & COFFEE など）。字間は開ける。 */
+.sample-breadday .bd-label {
+  font-family: var(--font-breadday-sans), 'Archivo', 'Helvetica Neue', Arial,
+    sans-serif;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+}
+
+/*
+ * 写真の地（2026-09-18 に写真を入れた）。
+ * `public/samples/breadday/` の写真がこの上に `<img>` で乗る（`SitePhoto`）。
+ * **クラスは残してある**: 写真が届くまで／読み込みに失敗したときに、
+ * 面の明度が動かないため。色は写真の平均色に寄せてある。
+ * filter は使わない（子孫の position: sticky を壊さないため）。
+ */
+.sample-breadday .bd-photo-hero {
+  background-color: #d9ab6a;
+  background-image:
+    radial-gradient(
+      70% 60% at 68% 22%,
+      rgba(255, 250, 235, 0.55) 0%,
+      rgba(255, 250, 235, 0) 60%
+    ),
+    radial-gradient(
+      80% 70% at 18% 88%,
+      rgba(120, 72, 32, 0.45) 0%,
+      rgba(120, 72, 32, 0) 68%
+    ),
+    linear-gradient(155deg, #e8c48c 0%, #d09c56 46%, #a9703a 100%);
+}
+.sample-breadday .bd-photo-croissant {
+  background: linear-gradient(158deg, #f6ead2 0%, #e3c390 58%, #c1894b 100%);
+}
+.sample-breadday .bd-photo-roll {
+  background: linear-gradient(158deg, #efd8bb 0%, #c98a63 52%, #9c4f35 100%);
+}
+.sample-breadday .bd-photo-loaf {
+  background: linear-gradient(158deg, #fbf1dc 0%, #eed9ad 55%, #cfa96c 100%);
+}
+.sample-breadday .bd-photo-sand {
+  background: linear-gradient(158deg, #f2e3c4 0%, #d8b579 50%, #8f6a3c 100%);
+}
+.sample-breadday .bd-photo-cafe {
+  background: linear-gradient(160deg, #c98d6d 0%, #a85440 48%, #6d3626 100%);
+}
+.sample-breadday .bd-photo-counter {
+  background: linear-gradient(150deg, #f0d79f 0%, #c79a5c 44%, #8a5a30 100%);
+}
+
+/* ------------------------------------------------------------------
+ * `<select>` は、いちばん長い選択肢より狭くならない（BREADDAY で実測）
+ * ------------------------------------------------------------------
+ * Chromium は `<select>` の使用幅を、いちばん長い option の幅で下から
+ * 押さえる。共有部品の `w-full`（width:100%）を書いても、使用値は
+ * option の幅のままになり、**ページ全体に横スクロールが出る**
+ * （管理画面の「開く取り置き」で、幅 240px / 文字スケール 200% で再現）。
+ * `min-width:0` も `text-overflow` も効かない。効くのは max-width だけ。
+ * ほかの本でも同じことが起きうるが、他の担当の作業中に共通側を動かさない
+ * ため、いまはこの1本だけに掛けてある。
+ * ------------------------------------------------------------------ */
+.sample-breadday select {
+  max-width: 100%;
+}
